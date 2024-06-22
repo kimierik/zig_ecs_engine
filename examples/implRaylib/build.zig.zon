@@ -1,0 +1,12 @@
+.{
+    .name = "implRaylib",
+    .version = "0.0.0",
+
+    .dependencies = .{
+        .libengine = .{ .path = "../../" },
+    },
+
+    .paths = .{
+        "",
+    },
+}
