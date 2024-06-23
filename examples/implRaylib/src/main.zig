@@ -67,6 +67,8 @@ const shape = struct {
     }
 };
 
+const exampleComponent = struct {};
+
 pub fn main() !void {
     var rndrimpl = renderimpl{};
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
@@ -87,13 +89,14 @@ pub fn main() !void {
 
     var shp = shape.make(verts, inds);
 
-    const eng: engine.Engine = .{
+    var eng: engine.Engine = .{
         .renderer = rndrimpl.renderer,
+        .allocator = alocator,
+        .component_map = std.AutoHashMap(u8, *std.ArrayList(type)).init(alocator),
     };
+    try eng.registerComponent(5, @TypeOf(exampleComponent));
 
     // register this drawable somewhere
     // some place where we call the draw calls of the objects
     try rndrimpl.renderer.draw(&shp.drawable);
-
-    _ = eng;
 }
