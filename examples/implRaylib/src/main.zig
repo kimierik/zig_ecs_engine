@@ -4,6 +4,7 @@ const engine = @import("engine");
 
 const Renderer = engine.renderer.Renderer;
 const Drawable = engine.renderer.Drawable;
+const Component = engine.Component;
 
 const renderimpl = struct {
     renderer: Renderer = .{ .vtable = &vtable },
@@ -67,7 +68,28 @@ const shape = struct {
     }
 };
 
-const exampleComponent = struct {};
+const exampleComponent = struct {
+    component: Component = .{ .vtable = &VTable },
+    testing: *const [3]u8 = "mem",
+    const VTable: Component.VTable = .{};
+};
+
+fn testSystem(eng: *engine.Engine) void {
+    // can we turn this into an iterator of sorts so we could do a cleaner forloop
+    // we can abstract some of this looping logic
+    // or if we do a register system fn that accepts the component and the engine itself calls it in loop
+    // gotta thing ab how we want systems to work in general
+    const a = eng.component_map.getPtr(5);
+    if (a) |b| {
+        if (b.*.items.len > 0) {
+            for (0..b.*.items.len) |i| {
+                // this is fucking something idk if this is even supposed to work
+                const self: *exampleComponent = @fieldParentPtr("component", b.*.items[i]);
+                std.debug.print("gobs {s}\n", .{self.testing});
+            }
+        }
+    }
+}
 
 pub fn main() !void {
     var rndrimpl = renderimpl{};
@@ -88,13 +110,18 @@ pub fn main() !void {
     try inds.append(2);
 
     var shp = shape.make(verts, inds);
+    var mcomp: exampleComponent = .{};
 
     var eng: engine.Engine = .{
         .renderer = rndrimpl.renderer,
         .allocator = alocator,
-        .component_map = std.AutoHashMap(u8, *std.ArrayList(type)).init(alocator),
+        .component_map = std.AutoHashMap(u8, *std.ArrayList(*Component)).init(alocator),
     };
-    try eng.registerComponent(5, @TypeOf(exampleComponent));
+    defer eng.deinit();
+    try eng.registerComponent(5, mcomp.component);
+    try eng.addToComponentList(5, &mcomp.component);
+
+    testSystem(&eng);
 
     // register this drawable somewhere
     // some place where we call the draw calls of the objects

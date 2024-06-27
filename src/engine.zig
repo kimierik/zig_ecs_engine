@@ -1,6 +1,6 @@
 const std = @import("std");
 pub const renderer = @import("renderer/renderer.zig");
-
+pub const Component = @import("engine/component.zig").Component;
 var gpa = std.heap.GeneralPurposeAllocator(.{}){};
 const allog = gpa.allocator();
 
@@ -9,7 +9,7 @@ pub const Engine = struct {
     // renderer interface
     renderer: renderer.Renderer,
     // hasmpapp with ocmponetnnet
-    component_map: std.AutoHashMap(u8, *std.ArrayList(type)),
+    component_map: std.AutoHashMap(u8, *std.ArrayList(*Component)),
 
     allocator: std.mem.Allocator,
 
@@ -23,9 +23,17 @@ pub const Engine = struct {
         self.component_map.deinit();
     }
 
-    pub fn registerComponent(self: *Engine, comptime name: u8, componetn_type: anytype) !void {
-        const t = @TypeOf(componetn_type);
-        var val = std.ArrayList(t).init(allog);
-        try self.component_map.put(name, &val);
+    /// register a component so that the engine knows that the struct is a component
+    pub fn registerComponent(self: *Engine, comptime name: u8, component: Component) !void {
+        _ = component; // autofix
+        const a = try allog.create(std.ArrayList(*Component));
+        a.* = std.ArrayList(*Component).init(allog);
+        try self.component_map.put(name, a); // this is stack pointer so it borke i think.
+        // even i ned to put it on the heap
+        // but if i do i dont know how to initialise it with init
+    }
+    pub fn addToComponentList(self: *Engine, comptime name: u8, component: *Component) !void {
+        std.debug.print("adds to list\n", .{});
+        try self.component_map.getPtr(name).?.*.append(component);
     }
 };
