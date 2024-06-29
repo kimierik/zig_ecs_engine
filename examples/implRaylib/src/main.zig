@@ -11,7 +11,6 @@ const renderimpl = struct {
         _ = rendr; // autofix
         std.debug.print("\ninship is of len {d}\n", .{obj.data.verts.items.len});
         // here do drawing calls for the whattever thing you want to render
-
     }
 };
 
@@ -45,21 +44,11 @@ const exampleComponent = struct {
     const VTable: Component.VTable = .{};
 };
 
-fn testSystem() void {
-    // can we turn this into an iterator of sorts so we could do a cleaner forloop
-    // we can abstract some of this looping logic
-    // or if we do a register system fn that accepts the component and the engine itself calls it in loop
-    // gotta thing ab how we want systems to work in general
-    const a = engine.genInstance().component_map.getPtr(@typeName(exampleComponent));
-    if (a) |b| {
-        if (b.*.items.len > 0) {
-            for (0..b.*.items.len) |i| {
-                // this is fucking something idk if this is even supposed to work
-                const self: *exampleComponent = @fieldParentPtr("component", b.*.items[i]);
-                std.debug.print("gobs {s}\n", .{self.testing});
-            }
-        }
-    }
+fn testSystem() !void {
+    var a = try engine.getComponentIterator(exampleComponent);
+    const b = try a.next();
+    // proves we get the example component type
+    std.debug.print("gobers {s}\n", .{b.testing});
 }
 
 pub fn main() !void {
@@ -91,9 +80,7 @@ pub fn main() !void {
 
     try engine.addSystem(testSystem);
 
-    engine.execSystems();
+    try engine.execSystems();
 
-    // register this drawable somewhere
-    // some place where we call the draw calls of the objects
     try rndrimpl.draw(shp);
 }

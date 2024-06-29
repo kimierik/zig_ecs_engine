@@ -1,29 +1,14 @@
 const std = @import("std");
 pub const Component = @import("engine/component.zig").Component;
+pub const ComponentIterator = @import("engine/types.zig").ComponentIterator;
+pub const engineError = @import("engine/types.zig").engineError;
 var gpa = std.heap.GeneralPurposeAllocator(.{}){};
 const allog = gpa.allocator();
 
 // global engine instance
 var engine: Engine = undefined;
-
-/// make engine
-pub fn init() void {
-    engine = .{
-        .allocator = allog,
-        .component_map = std.StringHashMap(*std.ArrayList(*Component)).init(allog),
-        .system_list = std.ArrayList(*const fn () void).init(allog),
-    };
-}
-
-/// deinit engine
-pub fn deinit() void {
-    engine.component_map.deinit();
-}
-
-/// get engine struct instance. this is for debugging and not to be used
-pub fn genInstance() *Engine {
-    return &engine;
-}
+// TODO :
+// add tests
 
 //------------------------------ components ------------------------------
 
@@ -42,26 +27,62 @@ pub fn addToComponentList(name: type, component: *Component) !void {
     try engine.component_map.getPtr(@typeName(name)).?.*.append(component);
 }
 
+pub fn getComponentIterator(T: type) engineError!ComponentIterator(T) {
+    const comps = engine.component_map.get(@typeName(T));
+    if (comps) |v| {
+        const a = ComponentIterator(T){
+            .components = v,
+            .index = 0,
+        };
+
+        return a;
+    }
+    return engineError.NoComponentOfType;
+}
+
 //------------------------------ systems ------------------------------
+// systems are just a function in a list that get executed in order
+// systems should not be added or removed durring game execution
 
 /// adds  a system to the engine
-pub fn addSystem(system: *const fn () void) !void {
+pub fn addSystem(system: *const fn () anyerror!void) !void {
     try engine.system_list.append(system);
 }
 
 /// executes all systems in order
-pub fn execSystems() void {
+pub fn execSystems() !void {
     for (engine.system_list.items) |system| {
-        system();
+        try system();
     }
 }
+
+//------------------------------ engine ------------------------------
 
 //main engine struct
 const Engine = struct {
     // renderer interface
     // hasmpapp with ocmponetnnet
     component_map: std.StringHashMap(*std.ArrayList(*Component)),
-    system_list: std.ArrayList(*const fn () void),
+    system_list: std.ArrayList(*const fn () anyerror!void),
 
     allocator: std.mem.Allocator,
 };
+
+/// make engine
+pub fn init() void {
+    engine = .{
+        .allocator = allog,
+        .component_map = std.StringHashMap(*std.ArrayList(*Component)).init(allog),
+        .system_list = std.ArrayList(*const fn () anyerror!void).init(allog),
+    };
+}
+
+/// deinit engine
+pub fn deinit() void {
+    engine.component_map.deinit();
+}
+
+/// get engine struct instance. this is for debugging and not to be used
+pub fn getInstance() *Engine {
+    return &engine;
+}
